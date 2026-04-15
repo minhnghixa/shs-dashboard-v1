@@ -4,7 +4,7 @@ import './globals.css'
 import QueryProvider from '@/components/providers/QueryProvider'
 
 const inter = Inter({
-  subsets: ['latin'],
+  subsets: ['latin', 'vietnamese'],
   variable: '--font-inter',
 })
 
