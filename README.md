@@ -37,8 +37,8 @@ npm install
 Mở file `.env.local` và điền thông tin:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_URL=<YOUR_SUPABASE_PROJECT_URL>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<YOUR_SUPABASE_ANON_KEY>
 ```
 
 ---
@@ -60,6 +60,12 @@ Mở **http://localhost:3000** → tự redirect vào `/dashboard`.
 3. Xem trước 10 dòng đầu → Click **Import**
 4. Dashboard tự động refresh dữ liệu
 
+## Tính năng chính
+
+- **Tổng quan (Overview):** Cung cấp biểu đồ và thẻ thống kê nhanh về doanh số, dư nợ margin, số lượng tài khoản active.
+- **Drill-down Modal (Phân tích chuyên sâu):** Click vào thẻ thống kê để hiển thị chi tiết số liệu. Cho phép theo dõi thành tích từ cấp Chi nhánh → Phòng ban (Team) → Từng nhân viên môi giới.
+- **Import dữ liệu:** Upload trực tiếp file excel đã chuẩn hóa, hệ thống tự động cập nhật và tính toán lại doanh số.
+
 ---
 
 ## Cấu trúc project
@@ -78,6 +84,7 @@ src/
 │   ├── dashboard/Sidebar.tsx
 │   ├── dashboard/Header.tsx
 │   ├── providers/QueryProvider.tsx
+│   ├── ui/DrillDownModal.tsx ← Modal xem chi tiết số liệu (Drill-down)
 │   └── ui/StatCard.tsx
 └── lib/
     ├── supabase/client.ts    ← Browser client
