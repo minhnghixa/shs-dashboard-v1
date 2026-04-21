@@ -27,8 +27,9 @@ npm install
 ## Bước 3 — Tạo bảng trong Supabase
 
 1. Vào **SQL Editor** trong Supabase dashboard
-2. Mở file `supabase/migrations/20260101_create_brokers.sql`
+2. Mở file `supabase/migrations/20260421_create_monthly_schema.sql` (File cũ `20260101_create_brokers.sql` hiện không còn sử dụng)
 3. Copy toàn bộ nội dung → paste vào SQL Editor → **Run**
+   (Bộ mã sẽ tự động tạo cấu trúc Table `broker_monthly` dạng chuỗi thời gian cùng với các Views MoM, Quarterly... tính toán linh động)
 
 ---
 
@@ -56,9 +57,9 @@ Mở **http://localhost:3000** → tự redirect vào `/dashboard`.
 ## Bước 6 — Import dữ liệu
 
 1. Vào màn **Dữ liệu** (sidebar trái)
-2. Upload file `broker_normalized.xlsx` (file đã chuẩn hóa)
+2. Upload file `broker_monthly_vX.xlsx` (file đã chia các sheet theo từng tháng định dạng `YYYY-MM`)
 3. Xem trước 10 dòng đầu → Click **Import**
-4. Dashboard tự động refresh dữ liệu
+4. Dashboard tự động refresh dư liệu và bổ sung lịch sử các tháng vào Period Selector.
 
 ## Tính năng chính
 
@@ -98,10 +99,10 @@ src/
 
 ## Khi có dữ liệu tháng mới
 
-1. Mở file Excel mới nhất
-2. Chạy lại 7 bước normalization (xem sheet `normalization_log` trong `broker_normalized.xlsx`)
+1. Mở file Excel tổng hợp
+2. Đổi tên Sheet/tab dữ liệu của tháng mới sang định dạng `YYYY-MM` (ví dụ: `2026-05`). Dashboard sẽ nhận diện sheet tự động.
 3. Upload file mới vào màn **Dữ liệu** → Import
-4. Dashboard tự cập nhật (upsert theo `ma_mg`)
+4. Database sẽ tự động Upsert dữ liệu với cặp khóa `(month_date, ma_mg)` và hệ thống sẽ tự tính toán số liệu So sánh Tháng, Lũy Kế Quý ngay lập tức.
 
 ---
 
