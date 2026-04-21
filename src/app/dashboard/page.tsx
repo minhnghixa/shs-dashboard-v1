@@ -102,9 +102,9 @@ export default function DashboardPage() {
       return qData.map(q => ({
         ma_mg: q.ma_mg, ho_ten: q.ho_ten, team: q.team, chi_nhanh: q.chi_nhanh,
         fee_nay: Number(q.fee_qtd || 0), fee_truoc: 0, fee_tuyet_doi: 0, fee_pct: null,
-        mar_nay: Number(q.mar_tong_avg || 0), mar_truoc: 0, mar_tuyet_doi: 0, mar_pct: null,
-        mar_margin: Number(q.mar_margin_avg || 0), mar_3ben: Number(q.mar_3ben_avg || 0), mar_ungtruoc: Number(q.mar_ungtruoc_avg || 0),
-        active_nay: Number(q.active_max || 0), active_truoc: 0, active_tuyet_doi: 0, active_pct: null,
+        mar_nay: Number(q.mar_tong_sum || 0), mar_truoc: 0, mar_tuyet_doi: 0, mar_pct: null,
+        mar_margin: Number(q.mar_margin_sum || 0), mar_3ben: Number(q.mar_3ben_sum || 0), mar_ungtruoc: Number(q.mar_ungtruoc_sum || 0),
+        active_nay: Number(q.active_sum || 0), active_truoc: 0, active_tuyet_doi: 0, active_pct: null,
       }))
     } else if (!isQuarter && momData) {
       return momData.map(m => ({

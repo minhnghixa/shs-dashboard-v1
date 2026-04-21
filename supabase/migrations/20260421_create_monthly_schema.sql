@@ -121,16 +121,14 @@ SELECT
   COUNT(DISTINCT month_date)                    AS months_count,
   -- months_count dùng để biết quý đã có đủ 3 tháng chưa
 
-  -- Margin: AVG (vì là dư nợ bình quân, không SUM)
-  ROUND(AVG(mar_tong))                          AS mar_tong_avg,
-  ROUND(AVG(mar_margin))                        AS mar_margin_avg,
-  ROUND(AVG(mar_3ben))                          AS mar_3ben_avg,
-  ROUND(AVG(mar_ungtruoc))                      AS mar_ungtruoc_avg,
+  -- Margin: SUM lũy kế cả quý (T1+T2+T3)
+  SUM(mar_tong)                                 AS mar_tong_sum,
+  SUM(mar_margin)                               AS mar_margin_sum,
+  SUM(mar_3ben)                                 AS mar_3ben_sum,
+  SUM(mar_ungtruoc)                             AS mar_ungtruoc_sum,
 
-  -- Active: MAX trong quý (số TK active cao nhất trong 3 tháng)
-  MAX(active)                                   AS active_max,
-  -- Hoặc AVG nếu muốn bình quân
-  ROUND(AVG(active))                            AS active_avg
+  -- Active: SUM lũy kế cả quý
+  SUM(active)                                   AS active_sum
 
 FROM broker_monthly
 GROUP BY
