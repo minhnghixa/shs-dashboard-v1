@@ -17,7 +17,7 @@ const METRIC_OPTS: { key: MetricKey; label: string }[] = [
 
 function getBrokerMetrics(b: UnifiedBroker, metric: MetricKey) {
   if (metric === 'fee')    return { truoc: b.fee_truoc,    nay: b.fee_nay,    td: b.fee_tuyet_doi,    pct: b.fee_pct }
-  if (metric === 'margin') return { truoc: b.mar_tong_truoc, nay: b.mar_tong_nay, td: b.mar_tuyet_doi, pct: b.mar_pct }
+  if (metric === 'margin') return { truoc: b.mar_truoc, nay: b.mar_nay, td: b.mar_tuyet_doi, pct: b.mar_pct }
   return { truoc: b.active_truoc, nay: b.active_nay, td: b.active_tuyet_doi, pct: b.active_pct }
 }
 

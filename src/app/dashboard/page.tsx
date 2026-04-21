@@ -35,8 +35,8 @@ export interface UnifiedBroker {
 function calcStats(brokers: UnifiedBroker[]) {
   const total_fee_nay = brokers.reduce((s, b) => s + b.fee_nay, 0)
   const total_fee_truoc = brokers.reduce((s, b) => s + b.fee_truoc, 0)
-  const total_mar_nay = brokers.reduce((s, b) => s + b.mar_tong_nay, 0)
-  const total_mar_truoc = brokers.reduce((s, b) => s + b.mar_tong_truoc, 0)
+  const total_mar_nay = brokers.reduce((s, b) => s + b.mar_nay, 0)
+  const total_mar_truoc = brokers.reduce((s, b) => s + b.mar_truoc, 0)
   const total_active_nay = brokers.reduce((s, b) => s + b.active_nay, 0)
   const total_active_truoc = brokers.reduce((s, b) => s + b.active_truoc, 0)
   const fee_pct = total_fee_truoc > 0 ? (total_fee_nay - total_fee_truoc) / total_fee_truoc * 100 : null
@@ -51,8 +51,8 @@ function calcBranchData(brokers: UnifiedBroker[]) {
     const fee_nay = b.reduce((s, x) => s + x.fee_nay, 0)
     const fee_truoc = b.reduce((s, x) => s + x.fee_truoc, 0)
 
-    const mar_nay = b.reduce((s, x) => s + x.mar_tong_nay, 0)
-    const mar_truoc = b.reduce((s, x) => s + x.mar_tong_truoc, 0)
+    const mar_nay = b.reduce((s, x) => s + x.mar_nay, 0)
+    const mar_truoc = b.reduce((s, x) => s + x.mar_truoc, 0)
 
     const active_nay = b.reduce((s, x) => s + x.active_nay, 0)
     const active_truoc = b.reduce((s, x) => s + x.active_truoc, 0)
@@ -160,7 +160,7 @@ export default function DashboardPage() {
 
   const topBrokers = [...brokers].sort((a, b) => {
     if (podiumTab === 'fee') return b.fee_nay - a.fee_nay
-    if (podiumTab === 'margin') return b.mar_tong_nay - a.mar_tong_nay
+    if (podiumTab === 'margin') return b.mar_nay - a.mar_nay
     if (podiumTab === 'active') return b.active_nay - a.active_nay
     return 0
   }).slice(0, 3)
@@ -376,7 +376,7 @@ export default function DashboardPage() {
                      {b.team && b.team !== 'Không xác định' && b.team !== '' ? b.team.replace('Team ', '') : b.chi_nhanh.replace('Chi nhánh ', '').replace('Phòng Giao dịch ', 'PGD ')}
                    </span>
                    <span className="font-black text-[#5c3a0a] text-xs md:text-base mt-0.5 tracking-tight drop-shadow-sm">
-                     {podiumTab === 'fee' ? fmtVND(b.fee_nay) : podiumTab === 'margin' ? fmtVND(b.mar_tong_nay) : b.active_nay.toLocaleString('vi-VN')}
+                     {podiumTab === 'fee' ? fmtVND(b.fee_nay) : podiumTab === 'margin' ? fmtVND(b.mar_nay) : b.active_nay.toLocaleString('vi-VN')}
                    </span>
                  </div>
                </div>
