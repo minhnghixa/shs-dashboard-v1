@@ -3,7 +3,7 @@ import { usePathname } from 'next/navigation'
 
 const TITLES: Record<string, { title: string; sub: string }> = {
   '/dashboard':           { title: 'Tổng quan',        sub: 'Báo cáo tổng hợp toàn hệ thống' },
-  '/dashboard/sales':     { title: 'Doanh số',          sub: 'Phí giao dịch & dư nợ Margin theo môi giới' },
+  '/dashboard/sales':     { title: 'Doanh số TVĐT',          sub: 'Phí giao dịch & Dư nợ theo tư vấn đầu tư' },
   '/dashboard/personnel': { title: 'Nhân sự',           sub: 'Cơ cấu tổ chức Chi nhánh → Team → Môi giới' },
   '/dashboard/data':      { title: 'Quản lý dữ liệu',  sub: 'Import và cập nhật dữ liệu từ file Excel' },
 }

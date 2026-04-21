@@ -14,7 +14,7 @@ interface Props {
 
 const METRIC_LABELS = {
   fee_nay: 'Phí Giao Dịch',
-  mar_nay: 'Dư Nợ Margin',
+  mar_nay: 'Dư Nợ',
   active_nay: 'TK Active'
 }
 
@@ -137,7 +137,7 @@ export default function DrillDownModal({ isOpen, onClose, metric, brokers }: Pro
             <div className="mb-6 bg-white rounded-lg p-5 shadow-sm border border-slate-100">
                <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100">
                   <h3 className="font-semibold text-slate-600">
-                    Tổng dư nợ margin <span className="text-brand-600 ml-1">- {activeTab}</span>
+                    Tổng dư nợ <span className="text-brand-600 ml-1">- {activeTab}</span>
                   </h3>
                   <span className="text-xl font-bold text-slate-800">{formatValue(totalBranch)}</span>
                </div>

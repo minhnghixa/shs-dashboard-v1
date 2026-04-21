@@ -11,7 +11,7 @@ import PeriodSelector from '@/components/ui/PeriodSelector'
 type MetricKey = 'fee' | 'margin' | 'active'
 const METRIC_OPTS: { key: MetricKey; label: string }[] = [
   { key: 'fee',    label: 'Phí GD' },
-  { key: 'margin', label: 'Dư nợ Margin' },
+  { key: 'margin', label: 'Dư nợ' },
   { key: 'active', label: 'TK Active' },
 ]
 
@@ -19,24 +19,6 @@ function getBrokerMetrics(b: UnifiedBroker, metric: MetricKey) {
   if (metric === 'fee')    return { truoc: b.fee_truoc,    nay: b.fee_nay,    td: b.fee_tuyet_doi,    pct: b.fee_pct }
   if (metric === 'margin') return { truoc: b.mar_truoc, nay: b.mar_nay, td: b.mar_tuyet_doi, pct: b.mar_pct }
   return { truoc: b.active_truoc, nay: b.active_nay, td: b.active_tuyet_doi, pct: b.active_pct }
-}
-
-function ProgressBar({ actual, prev }: { actual: number; prev: number }) {
-  const max = Math.max(actual, prev, 1)
-  const pctActual = (actual / max) * 100
-  const up = actual >= prev
-  return (
-    <div className="relative h-5 bg-slate-100 rounded overflow-hidden border border-slate-200">
-      <div className="absolute inset-y-0 left-0 bg-slate-200/70 rounded" style={{ width: `${(prev / max) * 100}%` }} />
-      <div
-        className={cn('absolute top-0.5 left-0 h-4 rounded transition-all duration-500', up ? 'bg-emerald-500' : 'bg-red-400')}
-        style={{ width: `${pctActual}%` }}
-      />
-      <div className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-white mix-blend-multiply">
-        {actual > 0 || prev > 0 ? fmtVND(actual) : '—'}
-      </div>
-    </div>
-  )
 }
 
 function BrokerRow({ broker, metric, idx, isQuarter }: { broker: UnifiedBroker; metric: MetricKey; idx: number; isQuarter: boolean }) {
@@ -53,14 +35,22 @@ function BrokerRow({ broker, metric, idx, isQuarter }: { broker: UnifiedBroker; 
         <div className="text-xs text-slate-700 font-medium truncate max-w-[180px]" title={broker.ho_ten}>{broker.ho_ten}</div>
         <div className="text-[10px] text-slate-400 font-mono">{broker.ma_mg}</div>
       </td>
-      <td className="py-2.5 px-3 min-w-[140px]">
-        <ProgressBar actual={m.nay} prev={isQuarter ? m.nay : m.truoc} />
-      </td>
-      {!isQuarter && <td className="py-2.5 px-3 text-xs text-right text-slate-500">{fmtVND(m.truoc)}</td>}
-      <td className="py-2.5 px-3 text-xs text-right font-medium text-slate-700">{fmtVND(m.nay)}</td>
+      {metric === 'margin' ? (
+        <>
+          <td className="py-2.5 px-3 text-xs text-right text-slate-500">{fmtVND(broker.mar_margin || 0)}</td>
+          <td className="py-2.5 px-3 text-xs text-right text-slate-500">{fmtVND(broker.mar_3ben || 0)}</td>
+          <td className="py-2.5 px-3 text-xs text-right text-slate-500">{fmtVND(broker.mar_ungtruoc || 0)}</td>
+          <td className="py-2.5 px-3 text-xs text-right font-bold text-slate-700">{fmtVND(m.nay)}</td>
+        </>
+      ) : (
+        <>
+          {!isQuarter && <td className="py-2.5 px-3 text-xs text-right text-slate-500">{fmtVND(m.truoc)}</td>}
+          <td className="py-2.5 px-3 text-xs text-right font-medium text-slate-700">{fmtVND(m.nay)}</td>
+        </>
+      )}
       {!isQuarter && (
         <>
-          <td className={cn('py-2.5 px-3 text-xs text-right font-medium', m.td >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+          <td className={cn('py-2.5 px-3 text-xs text-right font-medium whitespace-nowrap', m.td >= 0 ? 'text-emerald-600' : 'text-red-500')}>
             {m.td >= 0 ? '+' : ''}{fmtVND(m.td)}
           </td>
           <td className={cn('py-2.5 px-3 text-xs text-right font-semibold', pctColor(m.pct))}>
@@ -82,6 +72,14 @@ function TeamSection({ teamName, brokers, metric, branchColor, expanded, onToggl
   }, { truoc: 0, nay: 0, td: 0 })
   const pct = m.truoc > 0 ? (m.td / m.truoc) * 100 : null
 
+  const marTotals = brokers.reduce((s, b) => {
+    return {
+      margin: s.margin + (b.mar_margin || 0),
+      baBen: s.baBen + (b.mar_3ben || 0),
+      ungTruoc: s.ungTruoc + (b.mar_ungtruoc || 0)
+    }
+  }, { margin: 0, baBen: 0, ungTruoc: 0 })
+
   return (
     <div className="border border-slate-100 rounded-lg overflow-hidden">
       <button
@@ -94,11 +92,42 @@ function TeamSection({ teamName, brokers, metric, branchColor, expanded, onToggl
             : <ChevronRight size={13} style={{ color: branchColor }} />
           }
         </div>
-        <span className="text-sm font-medium text-slate-700 flex-1 truncate">{teamName}</span>
+        <div className="flex items-center flex-1 min-w-0 gap-2 pr-4">
+          <span className="text-sm font-medium text-slate-700 truncate">{teamName}</span>
+          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-medium text-slate-500 whitespace-nowrap">{brokers.length} MG</span>
+        </div>
         <div className="flex items-center gap-4 text-xs flex-shrink-0">
-          <span className="text-slate-400">{brokers.length} MG</span>
-          <span className="text-slate-600 font-medium hidden sm:block">{fmtVND(m.nay)}</span>
-          {!isQuarter && <span className={cn('font-semibold w-16 text-right', pctColor(pct))}>{fmtPct(pct)}</span>}
+          {metric === 'margin' ? (
+            <div className="flex items-center gap-4 text-right">
+              <div className="hidden lg:flex flex-col items-end">
+                 <span className="text-[9px] text-slate-400 mb-0.5">Dư nợ Margin</span>
+                 <span className="text-xs font-medium text-slate-600">{fmtVND(marTotals.margin)}</span>
+              </div>
+              <div className="hidden lg:flex flex-col items-end">
+                 <span className="text-[9px] text-slate-400 mb-0.5">Dư nợ 3 Bên</span>
+                 <span className="text-xs font-medium text-slate-600">{fmtVND(marTotals.baBen)}</span>
+              </div>
+              <div className="hidden md:flex flex-col items-end">
+                 <span className="text-[9px] text-slate-400 mb-0.5">Dư nợ Ứng Trước</span>
+                 <span className="text-xs font-medium text-slate-600">{fmtVND(marTotals.ungTruoc)}</span>
+              </div>
+              <div className="flex flex-col items-end border-l border-slate-200 pl-4">
+                 <span className="text-[9px] text-slate-500 font-medium uppercase mb-0.5">Tổng Dư Nợ</span>
+                 <span className="font-bold text-brand-600">{fmtVND(m.nay)}</span>
+              </div>
+            </div>
+          ) : (
+            <span className="text-slate-600 font-medium hidden sm:block">{fmtVND(m.nay)}</span>
+          )}
+
+          {!isQuarter && (
+            <div className="flex items-center gap-3 border-l border-slate-100 pl-4 ml-1">
+              <span className={cn('text-xs font-medium w-20 text-right whitespace-nowrap hidden sm:block', m.td >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                {m.td >= 0 ? '+' : ''}{fmtVND(m.td)}
+              </span>
+              <span className={cn('font-semibold w-12 text-right', pctColor(pct))}>{fmtPct(pct)}</span>
+            </div>
+          )}
         </div>
       </button>
 
@@ -114,9 +143,27 @@ function TeamSection({ teamName, brokers, metric, branchColor, expanded, onToggl
             <table className="w-full text-sm border-t border-slate-100">
               <thead className="bg-slate-50/80">
                 <tr>
-                  {['#', 'Họ và tên', 'Tiến độ', ...(isQuarter ? [] : ['T.Trước']), isQuarter ? 'T.Này (BQ/Tổng)' : 'T.Này', ...(isQuarter ? [] : ['Tăng TĐ', 'Tăng %'])].map(h => (
-                    <th key={h} className="py-2 px-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide first:pl-8">{h}</th>
-                  ))}
+                  <th className="py-2 px-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide first:pl-8">#</th>
+                  <th className="py-2 px-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Họ và tên</th>
+                  {metric === 'margin' ? (
+                    <>
+                      <th className="py-2 px-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Dư nợ margin</th>
+                      <th className="py-2 px-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Dư nợ 3 bên</th>
+                      <th className="py-2 px-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Dư nợ ứng trước</th>
+                      <th className="py-2 px-3 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wide">Dư nợ hiện tại</th>
+                    </>
+                  ) : (
+                    <>
+                      {!isQuarter && <th className="py-2 px-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wide">T.Trước</th>}
+                      <th className="py-2 px-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{isQuarter ? 'T.Này (BQ/Tổng)' : 'T.Này'}</th>
+                    </>
+                  )}
+                  {!isQuarter && (
+                    <>
+                      <th className="py-2 px-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Tăng TĐ</th>
+                      <th className="py-2 px-3 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Tăng %</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -168,9 +215,18 @@ export default function SalesPage() {
   const [search, setSearch] = useState('')
   const [filterBranch, setFilterBranch] = useState('')
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set())
+  const [expandedBranches, setExpandedBranches] = useState<Set<string>>(new Set())
 
   const toggleTeam = (key: string) => {
     setExpandedTeams(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  const toggleBranch = (key: string) => {
+    setExpandedBranches(prev => {
       const next = new Set(prev)
       next.has(key) ? next.delete(key) : next.add(key)
       return next
@@ -202,8 +258,11 @@ export default function SalesPage() {
 
   return (
     <div className="page-container py-6 space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-        <h1 className="text-2xl font-bold text-slate-800">Doanh số môi giới</h1>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Doanh số tư vấn đầu tư</h1>
+          {!isQuarter && <p className="text-[13px] text-slate-500 mt-1">So với tháng trước</p>}
+        </div>
         <PeriodSelector availableMonths={availableMonths || []} value={period} onChange={setPeriod} />
       </div>
 
@@ -264,41 +323,80 @@ export default function SalesPage() {
         const teams = grouped[branchName]
         if (!teams || Object.keys(teams).length === 0) return null
         const color = BRANCH_COLORS[branchName] ?? '#6366f1'
-        const totalNay = Object.values(teams).flat().reduce((s, b) => s + getBrokerMetrics(b, metric).nay, 0)
-        const totalCount = Object.values(teams).flat().length
+        const allBrokers = Object.values(teams).flat()
+        const totalCount = allBrokers.length
+        const mBranch = allBrokers.reduce((s, b) => {
+          const bm = getBrokerMetrics(b, metric)
+          return { truoc: s.truoc + bm.truoc, nay: s.nay + bm.nay, td: s.td + bm.td }
+        }, { truoc: 0, nay: 0, td: 0 })
+        const pctBranch = mBranch.truoc > 0 ? (mBranch.td / mBranch.truoc) * 100 : null
 
         return (
           <div key={branchName} className="bg-white rounded-xl border border-slate-100 overflow-hidden">
             {/* Branch header */}
-            <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100" style={{ borderLeftWidth: 3, borderLeftColor: color, borderLeftStyle: 'solid' }}>
+            <button 
+              onClick={() => toggleBranch(branchName)}
+              className="w-full flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 hover:bg-slate-50 transition-colors text-left" 
+              style={{ borderLeftWidth: 3, borderLeftColor: color, borderLeftStyle: 'solid' }}
+            >
               <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
-              <span className="text-sm font-semibold text-slate-800 flex-1">{branchName}</span>
-              <span className="text-xs text-slate-400">{Object.keys(teams).length} teams · {totalCount} MG</span>
-              <span className="text-sm font-semibold text-slate-700">{fmtVND(totalNay)}</span>
-            </div>
+              <div className="flex items-center flex-1 min-w-0 gap-2 pr-4">
+                <span className="text-sm font-semibold text-slate-800 truncate">{branchName}</span>
+                <span className="px-1.5 py-0.5 rounded bg-slate-100 text-[10px] font-medium text-slate-500 whitespace-nowrap">{Object.keys(teams).length} teams · {totalCount} MG</span>
+              </div>
+              
+              <div className="flex items-center gap-4 text-right flex-shrink-0">
+                <span className="text-sm font-semibold text-slate-700">{fmtVND(mBranch.nay)}</span>
+                {!isQuarter && (
+                  <>
+                    <span className={cn('text-xs font-medium hidden sm:block w-20 text-right whitespace-nowrap', mBranch.td >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                      {mBranch.td >= 0 ? '+' : ''}{fmtVND(mBranch.td)}
+                    </span>
+                    <span className={cn('text-xs font-semibold w-12 text-right', pctColor(pctBranch))}>
+                      {fmtPct(pctBranch)}
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="text-slate-400 ml-2">
+                {expandedBranches.has(branchName) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </div>
+            </button>
 
             {/* Teams */}
-            <div className="p-3 space-y-2">
-              {Object.entries(teams).sort(([, a], [, b]) => {
-                const aVal = a.reduce((s, x) => s + getBrokerMetrics(x, metric).nay, 0)
-                const bVal = b.reduce((s, x) => s + getBrokerMetrics(x, metric).nay, 0)
-                return bVal - aVal
-              }).map(([teamName, teamBrokers]) => {
-                const key = `${branchName}||${teamName}`
-                return (
-                  <TeamSection
-                    key={key}
-                    teamName={teamName}
-                    brokers={teamBrokers}
-                    metric={metric}
-                    branchColor={color}
-                    expanded={expandedTeams.has(key)}
-                    onToggle={() => toggleTeam(key)}
-                    isQuarter={isQuarter}
-                  />
-                )
-              })}
-            </div>
+            <AnimatePresence>
+              {expandedBranches.has(branchName) && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-3 space-y-2">
+                    {Object.entries(teams).sort(([, a], [, b]) => {
+                      const aVal = a.reduce((s, x) => s + getBrokerMetrics(x, metric).nay, 0)
+                      const bVal = b.reduce((s, x) => s + getBrokerMetrics(x, metric).nay, 0)
+                      return bVal - aVal
+                    }).map(([teamName, teamBrokers]) => {
+                      const key = `${branchName}||${teamName}`
+                      return (
+                        <TeamSection
+                          key={key}
+                          teamName={teamName}
+                          brokers={teamBrokers}
+                          metric={metric}
+                          branchColor={color}
+                          expanded={expandedTeams.has(key)}
+                          onToggle={() => toggleTeam(key)}
+                          isQuarter={isQuarter}
+                        />
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )
       })}
