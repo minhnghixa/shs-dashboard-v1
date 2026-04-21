@@ -3,7 +3,7 @@ import { useState, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { parseExcel, type ParseResult } from '@/lib/excel-parser'
-import type { Broker } from '@/lib/types'
+import type { BrokerMonthly } from '@/lib/types'
 import { fmtVND, fmtPct, pctColor, cn } from '@/lib/utils'
 import { Upload, CheckCircle2, AlertCircle, Info, FileSpreadsheet, RefreshCw, Trash2, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -27,30 +27,29 @@ function StatusBadge({ type, children }: { type: 'success' | 'error' | 'warning'
   )
 }
 
-function PreviewTable({ data }: { data: Broker[] }) {
+function PreviewTable({ data }: { data: BrokerMonthly[] }) {
   const preview = data.slice(0, 10)
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full text-xs">
         <thead className="bg-slate-50 border-b border-slate-200">
           <tr>
-            {['#','Mã MG','Họ và tên','Team','Chi nhánh','Phí T.Này','Dư Nợ T.Này','Active T.Này','Tăng % Phí'].map(h => (
+            {['Tháng','Mã MG','Họ và tên','Team','Chi nhánh','Phí net','Tổng DN','TK Active'].map(h => (
               <th key={h} className="px-3 py-2 text-left font-semibold text-slate-500 whitespace-nowrap">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {preview.map((b, i) => (
-            <tr key={b.ma_mg} className="hover:bg-slate-50 transition-colors">
-              <td className="px-3 py-2 text-slate-400">{i + 1}</td>
+            <tr key={`${b.month_date}-${b.ma_mg}`} className="hover:bg-slate-50 transition-colors">
+              <td className="px-3 py-2 text-slate-400 font-medium">{b.month_date}</td>
               <td className="px-3 py-2 font-mono text-slate-600">{b.ma_mg}</td>
               <td className="px-3 py-2 text-slate-700 font-medium whitespace-nowrap">{b.ho_ten}</td>
               <td className="px-3 py-2 text-slate-500 max-w-[180px] truncate">{b.team}</td>
               <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{b.chi_nhanh}</td>
-              <td className="px-3 py-2 text-right font-medium text-slate-700">{fmtVND(b.fee_nay)}</td>
-              <td className="px-3 py-2 text-right text-slate-600">{fmtVND(b.mar_tong_nay)}</td>
-              <td className="px-3 py-2 text-right text-slate-600">{b.active_nay}</td>
-              <td className={cn('px-3 py-2 text-right font-semibold', pctColor(b.fee_pct))}>{fmtPct(b.fee_pct)}</td>
+              <td className="px-3 py-2 text-right font-medium text-slate-700">{fmtVND(b.fee)}</td>
+              <td className="px-3 py-2 text-right text-slate-600">{fmtVND(b.mar_tong)}</td>
+              <td className="px-3 py-2 text-right text-slate-600">{b.active}</td>
             </tr>
           ))}
         </tbody>
@@ -134,13 +133,13 @@ export default function DataPage() {
     try {
       const sb = createClient()
       // Upsert in batches of 50
-      const batches: Broker[][] = []
+      const batches: BrokerMonthly[][] = []
       for (let i = 0; i < parseResult.data.length; i += 50) batches.push(parseResult.data.slice(i, i + 50))
       for (const batch of batches) {
-        const { error } = await sb.from('brokers').upsert(batch, { onConflict: 'ma_mg' })
+        const { error } = await sb.from('broker_monthly').upsert(batch, { onConflict: 'month_date,ma_mg' })
         if (error) throw error
       }
-      await queryClient.invalidateQueries({ queryKey: ['brokers'] })
+      await queryClient.invalidateQueries({ queryKey: ['available-months'] })
       setUploadMsg(`Import thành công ${parseResult.valid} môi giới. Cache đã được làm mới.`)
       setStep('done')
     } catch (e) {
@@ -208,10 +207,10 @@ export default function DataPage() {
                   <p className="text-xs font-semibold text-blue-700">Định dạng file yêu cầu</p>
                 </div>
                 <ul className="text-xs text-blue-600 space-y-1 ml-5">
-                  <li>File phải là <strong>broker_normalized.xlsx</strong> (file đã chuẩn hóa)</li>
-                  <li>Sheet tên <code className="bg-blue-100 px-1 rounded">data</code> với row 3 chứa field names (snake_case)</li>
-                  <li>Dữ liệu bắt đầu từ row 4</li>
-                  <li>Cột <code className="bg-blue-100 px-1 rounded">ma_mg</code> là primary key — sẽ upsert khi trùng</li>
+                  <li>File phải là <strong>broker_monthly_vX.xlsx</strong></li>
+                  <li>Mỗi tháng = 1 sheet tên <strong>YYYY-MM</strong> (VD: 2026-04)</li>
+                  <li>Row 3 chứa field names (snake_case), data từ row 4</li>
+                  <li>Cột có cặp primary key <code className="bg-blue-100 px-1 rounded">(month_date, ma_mg)</code> sẽ tự upsert ghi đè.</li>
                 </ul>
               </div>
             </motion.div>

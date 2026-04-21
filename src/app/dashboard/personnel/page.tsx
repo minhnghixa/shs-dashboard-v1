@@ -1,22 +1,11 @@
 'use client'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { BRANCH_COLORS, BRANCH_ORDER, initials, cn } from '@/lib/utils'
-import type { Broker } from '@/lib/types'
-import { Search, ChevronRight, ChevronDown, Users } from 'lucide-react'
+import type { BrokerMoM } from '@/lib/types'
+import { Search, ChevronRight, ChevronDown, Users, Calendar } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-
-function useBrokers() {
-  return useQuery({
-    queryKey: ['brokers'],
-    queryFn: async () => {
-      const { data, error } = await createClient().from('brokers').select('*')
-      if (error) throw error
-      return data as Broker[]
-    },
-  })
-}
+import { useAvailableMonths, useBrokerMoM } from '@/hooks/useBrokerData'
 
 const AVATAR_PALETTE = ['#fde68a','#a7f3d0','#bfdbfe','#fecdd3','#ddd6fe','#fed7aa']
 function avatarBg(ma: string) {
@@ -25,7 +14,7 @@ function avatarBg(ma: string) {
   return AVATAR_PALETTE[Math.abs(h) % AVATAR_PALETTE.length]
 }
 
-function BrokerCard({ broker, idx }: { broker: Broker; idx: number }) {
+function BrokerCard({ broker, idx }: { broker: BrokerMoM; idx: number }) {
   const bg = avatarBg(broker.ma_mg)
   return (
     <motion.div
@@ -49,7 +38,7 @@ function BrokerCard({ broker, idx }: { broker: Broker; idx: number }) {
 }
 
 function TeamBlock({ teamName, brokers, branchColor, expanded, onToggle }: {
-  teamName: string; brokers: Broker[]; branchColor: string;
+  teamName: string; brokers: BrokerMoM[]; branchColor: string;
   expanded: boolean; onToggle: () => void
 }) {
   return (
@@ -88,7 +77,12 @@ function TeamBlock({ teamName, brokers, branchColor, expanded, onToggle }: {
 }
 
 export default function PersonnelPage() {
-  const { data: brokers, isLoading, error } = useBrokers()
+  const { data: availableMonths, isLoading: loadingMonths } = useAvailableMonths()
+  const latestMonth = availableMonths?.[0] || ''
+  
+  const { data: brokers, isLoading: loadingBrokers, error } = useBrokerMoM(latestMonth)
+  const isLoading = loadingMonths || loadingBrokers
+
   const [search, setSearch]             = useState('')
   const [filterBranch, setFilterBranch] = useState('')
   const [expandedBranches, setExpandedBranches] = useState<Set<string>>(new Set(BRANCH_ORDER))
@@ -121,7 +115,7 @@ export default function PersonnelPage() {
   }, [brokers, filterBranch, search])
 
   const grouped = useMemo(() => {
-    const map: Record<string, Record<string, Broker[]>> = {}
+    const map: Record<string, Record<string, BrokerMoM[]>> = {}
     filtered.forEach(b => {
       if (!map[b.chi_nhanh]) map[b.chi_nhanh] = {}
       if (!map[b.chi_nhanh][b.team]) map[b.chi_nhanh][b.team] = []
@@ -136,6 +130,15 @@ export default function PersonnelPage() {
 
   return (
     <div className="page-container py-6 space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-slate-800">Cơ cấu nhân sự</h1>
+        {latestMonth && (
+          <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-sm text-slate-600 shadow-sm w-fit">
+            <Calendar size={14} className="text-brand-500" />
+            <span>Kỳ báo cáo: <strong className="text-slate-800">{new Date(latestMonth).getMonth() + 1}/{new Date(latestMonth).getFullYear()}</strong></span>
+          </div>
+        )}
+      </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

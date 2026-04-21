@@ -1,31 +1,38 @@
 'use client'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
 import { fmtVND, fmtPct, pctColor, BRANCH_COLORS, BRANCH_ORDER } from '@/lib/utils'
 import StatCard from '@/components/ui/StatCard'
 import DrillDownModal from '@/components/ui/DrillDownModal'
+import PeriodSelector from '@/components/ui/PeriodSelector'
 import { DollarSign, TrendingUp, Users, BarChart2, Building2 } from 'lucide-react'
+import { useAvailableMonths, useBrokerMoM, useBrokerQuarterly } from '@/hooks/useBrokerData'
+import type { PeriodOption } from '@/lib/types'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, LineChart, Line, Legend,
   PieChart, Pie
 } from 'recharts'
-import type { Broker } from '@/lib/types'
-
-function useBrokers() {
-  return useQuery({
-    queryKey: ['brokers'],
-    queryFn: async () => {
-      const sb = createClient()
-      const { data, error } = await sb.from('brokers').select('*')
-      if (error) throw error
-      return data as Broker[]
-    },
-  })
+export interface UnifiedBroker {
+  ma_mg: string;
+  ho_ten: string;
+  team: string;
+  chi_nhanh: string;
+  fee_nay: number;
+  fee_truoc: number;
+  fee_tuyet_doi: number;
+  fee_pct: number | null;
+  mar_nay: number;
+  mar_truoc: number;
+  mar_tuyet_doi: number;
+  mar_pct: number | null;
+  active_nay: number;
+  active_truoc: number;
+  active_tuyet_doi: number;
+  active_pct: number | null;
 }
 
-function calcStats(brokers: Broker[]) {
+function calcStats(brokers: UnifiedBroker[]) {
   const total_fee_nay = brokers.reduce((s, b) => s + b.fee_nay, 0)
   const total_fee_truoc = brokers.reduce((s, b) => s + b.fee_truoc, 0)
   const total_mar_nay = brokers.reduce((s, b) => s + b.mar_tong_nay, 0)
@@ -38,7 +45,7 @@ function calcStats(brokers: Broker[]) {
   return { total_fee_nay, total_fee_truoc, fee_pct, total_mar_nay, mar_pct, total_active_nay, act_pct }
 }
 
-function calcBranchData(brokers: Broker[]) {
+function calcBranchData(brokers: UnifiedBroker[]) {
   return BRANCH_ORDER.map(cn => {
     const b = brokers.filter(x => x.chi_nhanh === cn)
     const fee_nay = b.reduce((s, x) => s + x.fee_nay, 0)
@@ -93,10 +100,36 @@ function Skeleton({ className = '' }: { className?: string }) {
 }
 
 export default function DashboardPage() {
-  const { data: brokers, isLoading, error } = useBrokers()
-  const [drillDownMetric, setDrillDownMetric] = useState<'fee_nay' | 'mar_nay' | 'active_nay' | null>(null)
-  const [branchTab, setBranchTab] = useState<'fee' | 'margin' | 'active'>('fee')
-  const [podiumTab, setPodiumTab] = useState<'fee' | 'margin' | 'active'>('fee')
+  const { data: availableMonths, isLoading: loadingMonths } = useAvailableMonths()
+  const [period, setPeriod] = useState<PeriodOption | null>(null)
+
+  const isQuarter = period?.type === 'quarter'
+  const val = period?.value || ''
+
+  const { data: momData, isLoading: loadingMom, error: errMom } = useBrokerMoM(isQuarter ? '' : val)
+  const { data: qData, isLoading: loadingQ, error: errQ } = useBrokerQuarterly(isQuarter ? val : '')
+
+  const isLoading = loadingMonths || loadingMom || loadingQ
+  const error = errMom || errQ
+
+  const brokers: UnifiedBroker[] = useMemo(() => {
+    if (isQuarter && qData) {
+      return qData.map(q => ({
+        ma_mg: q.ma_mg, ho_ten: q.ho_ten, team: q.team, chi_nhanh: q.chi_nhanh,
+        fee_nay: q.fee_qtd, fee_truoc: 0, fee_tuyet_doi: 0, fee_pct: null,
+        mar_nay: q.mar_tong_avg, mar_truoc: 0, mar_tuyet_doi: 0, mar_pct: null,
+        active_nay: q.active_max, active_truoc: 0, active_tuyet_doi: 0, active_pct: null,
+      }))
+    } else if (!isQuarter && momData) {
+      return momData.map(m => ({
+        ma_mg: m.ma_mg, ho_ten: m.ho_ten, team: m.team, chi_nhanh: m.chi_nhanh,
+        fee_nay: m.fee_nay, fee_truoc: m.fee_truoc, fee_tuyet_doi: m.fee_tuyet_doi, fee_pct: m.fee_pct,
+        mar_nay: m.mar_nay, mar_truoc: m.mar_truoc, mar_tuyet_doi: m.mar_tuyet_doi, mar_pct: m.mar_pct,
+        active_nay: m.active_nay, active_truoc: m.active_truoc, active_tuyet_doi: m.active_tuyet_doi, active_pct: m.active_pct,
+      }))
+    }
+    return []
+  }, [isQuarter, qData, momData])
 
   if (error) return (
     <div className="page-container py-8">
@@ -131,14 +164,18 @@ export default function DashboardPage() {
 
   return (
     <div className="page-container py-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-slate-800">Tổng quan kinh doanh</h1>
+        <PeriodSelector availableMonths={availableMonths || []} value={period} onChange={setPeriod} />
+      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard
-          label="Phí GD tháng này"
+          label={isQuarter ? "Phí GD quý này" : "Phí GD tháng này"}
           value={fmtVND(stats.total_fee_nay)}
           pct={stats.fee_pct}
-          sub="so tháng trước"
+          sub={isQuarter ? "tổng lũy kế" : "so tháng trước"}
           icon={DollarSign}
           iconColor="text-brand-500"
           delay={0}
@@ -153,10 +190,10 @@ export default function DashboardPage() {
           delay={80}
         />
         <StatCard
-          label="TK Active tháng này"
+          label={isQuarter ? "TK Active kỳ này" : "TK Active tháng này"}
           value={stats.total_active_nay.toLocaleString('vi-VN')}
           pct={stats.act_pct}
-          sub="tài khoản"
+          sub={isQuarter ? "tài khoản giao dịch" : "tài khoản"}
           icon={TrendingUp}
           iconColor="text-amber-500"
           delay={160}
@@ -261,7 +298,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-700">{chart.title}</h3>
-                <p className="text-xs text-slate-400 mt-0.5">So sánh tháng trước — tháng này</p>
+                <p className="text-xs text-slate-400 mt-0.5">{isQuarter ? 'Lũy kế quý' : 'So sánh tháng trước — tháng này'}</p>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={220}>
@@ -270,8 +307,8 @@ export default function DashboardPage() {
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={v => chart.fmt(v)} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={56} />
                 <Tooltip content={<CustomTooltip formatter={chart.fmt} />} cursor={{ fill: '#f8fafc' }} />
-                <Bar dataKey={chart.truoc} name="Tháng trước" fill="#e2e8f0" radius={[3, 3, 0, 0]} barSize={12} />
-                <Bar dataKey={chart.nay} name="Tháng này" radius={[3, 3, 0, 0]} barSize={12}>
+                {!isQuarter && <Bar dataKey={chart.truoc} name="Tháng trước" fill="#e2e8f0" radius={[3, 3, 0, 0]} barSize={12} />}
+                <Bar dataKey={chart.nay} name={isQuarter ? 'Kỳ này' : 'Tháng này'} radius={[3, 3, 0, 0]} barSize={12}>
                   {branchData.map((d, i) => <Cell key={i} fill={d.color} />)}
                 </Bar>
               </BarChart>
@@ -291,7 +328,7 @@ export default function DashboardPage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[150px] bg-white/40 blur-[80px] rounded-full pointer-events-none" />
 
         <div className="mb-8 text-center relative z-10 w-full flex flex-col items-center">
-          <h3 className="text-xl font-bold text-amber-950 mb-3 tracking-tight">Tư vấn đầu tư xuất sắc nhất trong tháng</h3>
+          <h3 className="text-xl font-bold text-amber-950 mb-3 tracking-tight">Tư vấn đầu tư xuất sắc nhất {isQuarter ? 'trong quý' : 'trong tháng'}</h3>
           <div className="flex items-center gap-1 bg-amber-100/50 p-1 rounded-lg border border-amber-200/50">
             {[
               { id: 'fee', label: 'Phí GD' },
@@ -374,26 +411,26 @@ export default function DashboardPage() {
                 <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Số MG</th>
                 {branchTab === 'fee' && (
                   <>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Phí T.Trước</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Phí T.Này</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng phí</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng phí %</th>
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Phí T.Trước</th>}
+                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">{isQuarter ? 'Phí Lũy Kế' : 'Phí T.Này'}</th>
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng phí</th>}
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng phí %</th>}
                   </>
                 )}
                 {branchTab === 'margin' && (
                   <>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Dư nợ T.Trước</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Dư nợ T.Này</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng dư nợ</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng dư nợ %</th>
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Dư nợ T.Trước</th>}
+                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">{isQuarter ? 'Dư nợ BQ' : 'Dư nợ T.Này'}</th>
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng dư nợ</th>}
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng dư nợ %</th>}
                   </>
                 )}
                 {branchTab === 'active' && (
                   <>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Active T.Trước</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Active T.Này</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng TK tuyệt đối</th>
-                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng TK %</th>
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Active T.Trước</th>}
+                    <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">{isQuarter ? 'TK Active' : 'Active T.Này'}</th>
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng TK tuyệt đối</th>}
+                    {!isQuarter && <th className="text-left py-2 px-3 text-slate-400 font-medium whitespace-nowrap">Tăng TK %</th>}
                   </>
                 )}
               </tr>
@@ -411,28 +448,28 @@ export default function DashboardPage() {
                   
                   {branchTab === 'fee' && (
                     <>
-                      <td className="py-3 px-3 text-slate-500 whitespace-nowrap">{fmtVND(d.fee_truoc)}</td>
+                      {!isQuarter && <td className="py-3 px-3 text-slate-500 whitespace-nowrap">{fmtVND(d.fee_truoc)}</td>}
                       <td className="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">{fmtVND(d.fee_nay)}</td>
-                      <td className={`py-3 px-3 font-medium whitespace-nowrap ${pctColor(d.fee_tuyetdoi > 0 ? 1 : d.fee_tuyetdoi < 0 ? -1 : 0)}`}>{d.fee_tuyetdoi > 0 ? '+' : ''}{fmtVND(d.fee_tuyetdoi)}</td>
-                      <td className={`py-3 px-3 font-bold whitespace-nowrap ${pctColor(d.fee_pct)}`}>{fmtPct(d.fee_pct)}</td>
+                      {!isQuarter && <td className={`py-3 px-3 font-medium whitespace-nowrap ${pctColor(d.fee_tuyetdoi > 0 ? 1 : d.fee_tuyetdoi < 0 ? -1 : 0)}`}>{d.fee_tuyetdoi > 0 ? '+' : ''}{fmtVND(d.fee_tuyetdoi)}</td>}
+                      {!isQuarter && <td className={`py-3 px-3 font-bold whitespace-nowrap ${pctColor(d.fee_pct)}`}>{fmtPct(d.fee_pct)}</td>}
                     </>
                   )}
 
                   {branchTab === 'margin' && (
                     <>
-                      <td className="py-3 px-3 text-slate-500 whitespace-nowrap">{fmtVND(d.mar_truoc)}</td>
+                      {!isQuarter && <td className="py-3 px-3 text-slate-500 whitespace-nowrap">{fmtVND(d.mar_truoc)}</td>}
                       <td className="py-3 px-3 font-semibold text-slate-800 whitespace-nowrap">{fmtVND(d.mar_nay)}</td>
-                      <td className={`py-3 px-3 font-medium whitespace-nowrap ${pctColor(d.mar_tuyetdoi > 0 ? 1 : d.mar_tuyetdoi < 0 ? -1 : 0)}`}>{d.mar_tuyetdoi > 0 ? '+' : ''}{fmtVND(d.mar_tuyetdoi)}</td>
-                      <td className={`py-3 px-3 font-bold whitespace-nowrap ${pctColor(d.mar_pct)}`}>{fmtPct(d.mar_pct)}</td>
+                      {!isQuarter && <td className={`py-3 px-3 font-medium whitespace-nowrap ${pctColor(d.mar_tuyetdoi > 0 ? 1 : d.mar_tuyetdoi < 0 ? -1 : 0)}`}>{d.mar_tuyetdoi > 0 ? '+' : ''}{fmtVND(d.mar_tuyetdoi)}</td>}
+                      {!isQuarter && <td className={`py-3 px-3 font-bold whitespace-nowrap ${pctColor(d.mar_pct)}`}>{fmtPct(d.mar_pct)}</td>}
                     </>
                   )}
 
                   {branchTab === 'active' && (
                     <>
-                      <td className="py-3 px-3 text-slate-500">{d.active_truoc.toLocaleString('vi-VN')}</td>
+                      {!isQuarter && <td className="py-3 px-3 text-slate-500">{d.active_truoc.toLocaleString('vi-VN')}</td>}
                       <td className="py-3 px-3 font-semibold text-slate-800">{d.active_nay.toLocaleString('vi-VN')}</td>
-                      <td className={`py-3 px-3 font-medium whitespace-nowrap ${pctColor(d.active_tuyetdoi > 0 ? 1 : d.active_tuyetdoi < 0 ? -1 : 0)}`}>{d.active_tuyetdoi > 0 ? '+' : ''}{d.active_tuyetdoi.toLocaleString('vi-VN')}</td>
-                      <td className={`py-3 px-3 font-bold whitespace-nowrap ${pctColor(d.active_pct)}`}>{fmtPct(d.active_pct)}</td>
+                      {!isQuarter && <td className={`py-3 px-3 font-medium whitespace-nowrap ${pctColor(d.active_tuyetdoi > 0 ? 1 : d.active_tuyetdoi < 0 ? -1 : 0)}`}>{d.active_tuyetdoi > 0 ? '+' : ''}{d.active_tuyetdoi.toLocaleString('vi-VN')}</td>}
+                      {!isQuarter && <td className={`py-3 px-3 font-bold whitespace-nowrap ${pctColor(d.active_pct)}`}>{fmtPct(d.active_pct)}</td>}
                     </>
                   )}
                 </tr>

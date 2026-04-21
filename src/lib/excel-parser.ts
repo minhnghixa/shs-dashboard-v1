@@ -1,17 +1,14 @@
 import * as XLSX from 'xlsx'
-import type { Broker } from './types'
+import type { BrokerMonthly } from './types'
 
 const REQUIRED_COLUMNS = [
   'ma_mg', 'ho_ten', 'team', 'chi_nhanh',
-  'fee_truoc', 'fee_nay', 'fee_tuyet_doi', 'fee_pct',
-  'mar_margin_truoc', 'mar_3ben_truoc', 'mar_ungtruoc_truoc', 'mar_tong_truoc',
-  'mar_margin_nay', 'mar_3ben_nay', 'mar_ungtruoc_nay', 'mar_tong_nay',
-  'mar_tuyet_doi', 'mar_pct',
-  'active_truoc', 'active_nay', 'active_tuyet_doi', 'active_pct',
+  'fee', 'mar_margin', 'mar_3ben', 'mar_ungtruoc', 'mar_tong'
+  // 'active' checks both 'CUR_MON_ACTIVE' and 'CUR_MON_OWN_ACTIVE' dynamically, we can check basic
 ]
 
 export interface ParseResult {
-  data: Broker[]
+  data: BrokerMonthly[]
   errors: string[]
   warnings: string[]
   total: number
@@ -26,86 +23,95 @@ export function parseExcel(file: File): Promise<ParseResult> {
 
       try {
         const wb = XLSX.read(e.target?.result, { type: 'binary' })
-
-        // Find sheet named 'data' (our normalized export)
-        const sheetName = wb.SheetNames.includes('data') ? 'data' : wb.SheetNames[0]
-        const ws = wb.Sheets[sheetName]
-
-        // Start reading from row 4 (row 1=group header, 2=sub-header, 3=field names)
-        // Use row 3 (field names) as header
-        const raw = (XLSX.utils.sheet_to_json(ws, {
-          header: 1,
-          defval: null,
-        }) as unknown) as unknown[][]
-
-        // Find the field-name row (row index 2 = row 3 in Excel)
-        const headerRow = raw[2] as string[]
-        if (!headerRow) {
-          result.errors.push('Không tìm thấy dòng tên field (row 3). File có đúng định dạng không?')
-          resolve(result)
-          return
+        
+        let targetSheets = wb.SheetNames.filter(name => /^\d{4}-\d{2}$/.test(name))
+        
+        if (targetSheets.length === 0) {
+          if (wb.SheetNames.includes('data')) {
+             result.errors.push('Sheet có tên là "data" đang bị lỗi thời. Đổi tên sheet sang chuẩn "YYYY-MM" (VD: 2026-04)')
+             return resolve(result)
+          } else {
+             result.errors.push('Không tìm thấy sheet nào có định dạng tên YYYY-MM (Ví dụ: 2026-04)')
+             return resolve(result)
+          }
         }
 
-        // Check required columns
-        const missing = REQUIRED_COLUMNS.filter(c => !headerRow.includes(c))
-        if (missing.length > 0) {
-          result.errors.push(`Thiếu các cột: ${missing.join(', ')}`)
-          resolve(result)
-          return
+        for (const sheetName of targetSheets) {
+          const ws = wb.Sheets[sheetName]
+          const month_date = `${sheetName}-01` // e.g., 2026-04-01
+
+          // Start reading from row 4 (row 1=group header, 2=sub-header, 3=field names)
+          const raw = (XLSX.utils.sheet_to_json(ws, {
+            header: 1,
+            defval: null,
+          }) as unknown) as unknown[][]
+
+          const headerRow = raw[2] as string[]
+          if (!headerRow) {
+            result.errors.push(`Sheet [${sheetName}]: Không tìm thấy dòng tên field (row 3).`)
+            continue
+          }
+
+          const missing = REQUIRED_COLUMNS.filter(c => !headerRow.includes(c))
+          if (missing.length > 0) {
+            result.errors.push(`Sheet [${sheetName}]: Thiếu cột: ${missing.join(', ')}`)
+            continue
+          }
+
+          const hasActive = headerRow.includes('active') || headerRow.includes('CUR_MON_ACTIVE') || headerRow.includes('CUR_MON_OWN_ACTIVE') || headerRow.includes('active_nay')
+          if (!hasActive) {
+            result.errors.push(`Sheet [${sheetName}]: Thiếu cột active (CUR_MON_ACTIVE / CUR_MON_OWN_ACTIVE)`)
+            continue
+          }
+
+          const colIdx = Object.fromEntries(headerRow.map((h, i) => [h, i]))
+
+          const dataRows = raw.slice(3)
+          result.total += dataRows.length
+
+          dataRows.forEach((row, i) => {
+            const rowNum = i + 4
+            if (!row || row.every(v => v === null || v === '')) return
+
+            const get = (col: string) => row[colIdx[col]] ?? null
+            const getNum = (col: string): number => {
+              const v = get(col)
+              return typeof v === 'number' ? v : parseFloat(String(v ?? '0')) || 0
+            }
+
+            const ma = String(get('ma_mg') ?? '').trim().toUpperCase()
+            const ten = String(get('ho_ten') ?? '').trim()
+
+            if (!ma || !ten) {
+              result.warnings.push(`Sheet [${sheetName}] Dòng ${rowNum}: thiếu mã MG hoặc lấy rỗng, bỏ qua`)
+              return
+            }
+
+            // Xử lí fallback 'active'
+            let rawActive = get('active')
+            if (rawActive === null) rawActive = get('CUR_MON_OWN_ACTIVE')
+            if (rawActive === null) rawActive = get('CUR_MON_ACTIVE') 
+            if (rawActive === null) rawActive = get('active_nay')
+            const activeVal = typeof rawActive === 'number' ? rawActive : parseFloat(String(rawActive ?? '0')) || 0
+
+            const broker: BrokerMonthly = {
+              month_date,
+              ma_mg: ma,
+              ho_ten: ten,
+              team: String(get('team') ?? get('SALE_GRP_NM') ?? '').trim(), // Fetch real team if field exists
+              chi_nhanh: String(get('chi_nhanh') ?? '').trim(),
+              fee: Math.round(getNum('fee')),
+              mar_margin: Math.round(getNum('mar_margin')),
+              mar_3ben: Math.round(getNum('mar_3ben')),
+              mar_ungtruoc: Math.round(getNum('mar_ungtruoc')),
+              mar_tong: Math.round(getNum('mar_tong')),
+              active: Math.round(activeVal),
+            }
+
+            result.data.push(broker)
+            result.valid++
+          })
         }
-
-        const colIdx = Object.fromEntries(headerRow.map((h, i) => [h, i]))
-
-        // Data starts from row index 3 (row 4 in Excel)
-        const dataRows = raw.slice(3)
-        result.total = dataRows.length
-
-        dataRows.forEach((row, i) => {
-          const rowNum = i + 4
-          if (!row || row.every(v => v === null || v === '')) return
-
-          const get = (col: string) => row[colIdx[col]] ?? null
-          const getNum = (col: string): number => {
-            const v = get(col)
-            return typeof v === 'number' ? v : parseFloat(String(v ?? '0')) || 0
-          }
-
-          const ma = String(get('ma_mg') ?? '').trim().toUpperCase()
-          const ten = String(get('ho_ten') ?? '').trim()
-
-          if (!ma || !ten) {
-            result.warnings.push(`Dòng ${rowNum}: thiếu mã MG hoặc họ tên, bỏ qua`)
-            return
-          }
-
-          const broker: Broker = {
-            ma_mg: ma,
-            ho_ten: ten,
-            team: String(get('team') ?? '').trim(),
-            chi_nhanh: String(get('chi_nhanh') ?? '').trim(),
-            fee_truoc: Math.round(getNum('fee_truoc')),
-            fee_nay: Math.round(getNum('fee_nay')),
-            fee_tuyet_doi: Math.round(getNum('fee_tuyet_doi')),
-            fee_pct: get('fee_pct') !== null ? Math.round(getNum('fee_pct') * 100) / 100 : null,
-            mar_margin_truoc: Math.round(getNum('mar_margin_truoc')),
-            mar_3ben_truoc: Math.round(getNum('mar_3ben_truoc')),
-            mar_ungtruoc_truoc: Math.round(getNum('mar_ungtruoc_truoc')),
-            mar_tong_truoc: Math.round(getNum('mar_tong_truoc')),
-            mar_margin_nay: Math.round(getNum('mar_margin_nay')),
-            mar_3ben_nay: Math.round(getNum('mar_3ben_nay')),
-            mar_ungtruoc_nay: Math.round(getNum('mar_ungtruoc_nay')),
-            mar_tong_nay: Math.round(getNum('mar_tong_nay')),
-            mar_tuyet_doi: Math.round(getNum('mar_tuyet_doi')),
-            mar_pct: get('mar_pct') !== null ? Math.round(getNum('mar_pct') * 100) / 100 : null,
-            active_truoc: Math.round(getNum('active_truoc')),
-            active_nay: Math.round(getNum('active_nay')),
-            active_tuyet_doi: Math.round(getNum('active_tuyet_doi')),
-            active_pct: get('active_pct') !== null ? Math.round(getNum('active_pct') * 100) / 100 : null,
-          }
-
-          result.data.push(broker)
-          result.valid++
-        })
       } catch (err) {
         result.errors.push(`Lỗi đọc file: ${err instanceof Error ? err.message : String(err)}`)
       }

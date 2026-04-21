@@ -1,22 +1,11 @@
 'use client'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { fmtVND, fmtPct, pctColor, BRANCH_COLORS, BRANCH_ORDER, cn } from '@/lib/utils'
-import type { Broker } from '@/lib/types'
+import type { UnifiedBroker, PeriodOption } from '@/lib/types'
 import { ChevronDown, ChevronRight, Search, SlidersHorizontal } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-
-function useBrokers() {
-  return useQuery({
-    queryKey: ['brokers'],
-    queryFn: async () => {
-      const { data, error } = await createClient().from('brokers').select('*')
-      if (error) throw error
-      return data as Broker[]
-    },
-  })
-}
+import { useAvailableMonths, useBrokerMoM, useBrokerQuarterly } from '@/hooks/useBrokerData'
+import PeriodSelector from '@/components/ui/PeriodSelector'
 
 type MetricKey = 'fee' | 'margin' | 'active'
 const METRIC_OPTS: { key: MetricKey; label: string }[] = [
@@ -25,7 +14,7 @@ const METRIC_OPTS: { key: MetricKey; label: string }[] = [
   { key: 'active', label: 'TK Active' },
 ]
 
-function getBrokerMetrics(b: Broker, metric: MetricKey) {
+function getBrokerMetrics(b: UnifiedBroker, metric: MetricKey) {
   if (metric === 'fee')    return { truoc: b.fee_truoc,    nay: b.fee_nay,    td: b.fee_tuyet_doi,    pct: b.fee_pct }
   if (metric === 'margin') return { truoc: b.mar_tong_truoc, nay: b.mar_tong_nay, td: b.mar_tuyet_doi, pct: b.mar_pct }
   return { truoc: b.active_truoc, nay: b.active_nay, td: b.active_tuyet_doi, pct: b.active_pct }
@@ -49,9 +38,8 @@ function ProgressBar({ actual, prev }: { actual: number; prev: number }) {
   )
 }
 
-function BrokerRow({ broker, metric, idx }: { broker: Broker; metric: MetricKey; idx: number }) {
+function BrokerRow({ broker, metric, idx, isQuarter }: { broker: UnifiedBroker; metric: MetricKey; idx: number; isQuarter: boolean }) {
   const m = getBrokerMetrics(broker, metric)
-  const color = BRANCH_COLORS[broker.chi_nhanh] ?? '#6366f1'
   return (
     <motion.tr
       initial={{ opacity: 0, y: -4 }}
@@ -65,23 +53,27 @@ function BrokerRow({ broker, metric, idx }: { broker: Broker; metric: MetricKey;
         <div className="text-[10px] text-slate-400 font-mono">{broker.ma_mg}</div>
       </td>
       <td className="py-2.5 px-3 min-w-[140px]">
-        <ProgressBar actual={m.nay} prev={m.truoc} />
+        <ProgressBar actual={m.nay} prev={isQuarter ? m.nay : m.truoc} />
       </td>
-      <td className="py-2.5 px-3 text-xs text-right text-slate-500">{fmtVND(m.truoc)}</td>
+      {!isQuarter && <td className="py-2.5 px-3 text-xs text-right text-slate-500">{fmtVND(m.truoc)}</td>}
       <td className="py-2.5 px-3 text-xs text-right font-medium text-slate-700">{fmtVND(m.nay)}</td>
-      <td className={cn('py-2.5 px-3 text-xs text-right font-medium', m.td >= 0 ? 'text-emerald-600' : 'text-red-500')}>
-        {m.td >= 0 ? '+' : ''}{fmtVND(m.td)}
-      </td>
-      <td className={cn('py-2.5 px-3 text-xs text-right font-semibold', pctColor(m.pct))}>
-        {fmtPct(m.pct)}
-      </td>
+      {!isQuarter && (
+        <>
+          <td className={cn('py-2.5 px-3 text-xs text-right font-medium', m.td >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+            {m.td >= 0 ? '+' : ''}{fmtVND(m.td)}
+          </td>
+          <td className={cn('py-2.5 px-3 text-xs text-right font-semibold', pctColor(m.pct))}>
+            {fmtPct(m.pct)}
+          </td>
+        </>
+      )}
     </motion.tr>
   )
 }
 
-function TeamSection({ teamName, brokers, metric, branchColor, expanded, onToggle }: {
-  teamName: string; brokers: Broker[]; metric: MetricKey;
-  branchColor: string; expanded: boolean; onToggle: () => void
+function TeamSection({ teamName, brokers, metric, branchColor, expanded, onToggle, isQuarter }: {
+  teamName: string; brokers: UnifiedBroker[]; metric: MetricKey;
+  branchColor: string; expanded: boolean; onToggle: () => void; isQuarter: boolean;
 }) {
   const m = brokers.reduce((s, b) => {
     const bm = getBrokerMetrics(b, metric)
@@ -105,7 +97,7 @@ function TeamSection({ teamName, brokers, metric, branchColor, expanded, onToggl
         <div className="flex items-center gap-4 text-xs flex-shrink-0">
           <span className="text-slate-400">{brokers.length} MG</span>
           <span className="text-slate-600 font-medium hidden sm:block">{fmtVND(m.nay)}</span>
-          <span className={cn('font-semibold w-16 text-right', pctColor(pct))}>{fmtPct(pct)}</span>
+          {!isQuarter && <span className={cn('font-semibold w-16 text-right', pctColor(pct))}>{fmtPct(pct)}</span>}
         </div>
       </button>
 
@@ -121,13 +113,13 @@ function TeamSection({ teamName, brokers, metric, branchColor, expanded, onToggl
             <table className="w-full text-sm border-t border-slate-100">
               <thead className="bg-slate-50/80">
                 <tr>
-                  {['#', 'Họ và tên', 'Tiến độ', 'T.Trước', 'T.Này', 'Tăng TĐ', 'Tăng %'].map(h => (
+                  {['#', 'Họ và tên', 'Tiến độ', ...(isQuarter ? [] : ['T.Trước']), isQuarter ? 'T.Này (BQ/Tổng)' : 'T.Này', ...(isQuarter ? [] : ['Tăng TĐ', 'Tăng %'])].map(h => (
                     <th key={h} className="py-2 px-3 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wide first:pl-8">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {brokers.map((b, i) => <BrokerRow key={b.ma_mg} broker={b} metric={metric} idx={i} />)}
+                {brokers.map((b, i) => <BrokerRow key={b.ma_mg} broker={b} metric={metric} idx={i} isQuarter={isQuarter} />)}
               </tbody>
             </table>
           </motion.div>
@@ -138,7 +130,36 @@ function TeamSection({ teamName, brokers, metric, branchColor, expanded, onToggl
 }
 
 export default function SalesPage() {
-  const { data: brokers, isLoading, error } = useBrokers()
+  const { data: availableMonths, isLoading: loadingMonths } = useAvailableMonths()
+  const [period, setPeriod] = useState<PeriodOption | null>(null)
+
+  const isQuarter = period?.type === 'quarter'
+  const val = period?.value || ''
+
+  const { data: momData, isLoading: loadingMom, error: errMom } = useBrokerMoM(isQuarter ? '' : val)
+  const { data: qData, isLoading: loadingQ, error: errQ } = useBrokerQuarterly(isQuarter ? val : '')
+
+  const isLoading = loadingMonths || loadingMom || loadingQ
+  const error = errMom || errQ
+
+  const brokers: UnifiedBroker[] = useMemo(() => {
+    if (isQuarter && qData) {
+      return qData.map(q => ({
+        ma_mg: q.ma_mg, ho_ten: q.ho_ten, team: q.team, chi_nhanh: q.chi_nhanh,
+        fee_nay: q.fee_qtd, fee_truoc: 0, fee_tuyet_doi: 0, fee_pct: null,
+        mar_nay: q.mar_tong_avg, mar_truoc: 0, mar_tuyet_doi: 0, mar_pct: null,
+        active_nay: q.active_max, active_truoc: 0, active_tuyet_doi: 0, active_pct: null,
+      }))
+    } else if (!isQuarter && momData) {
+      return momData.map(m => ({
+        ma_mg: m.ma_mg, ho_ten: m.ho_ten, team: m.team, chi_nhanh: m.chi_nhanh,
+        fee_nay: m.fee_nay, fee_truoc: m.fee_truoc, fee_tuyet_doi: m.fee_tuyet_doi, fee_pct: m.fee_pct,
+        mar_nay: m.mar_nay, mar_truoc: m.mar_truoc, mar_tuyet_doi: m.mar_tuyet_doi, mar_pct: m.mar_pct,
+        active_nay: m.active_nay, active_truoc: m.active_truoc, active_tuyet_doi: m.active_tuyet_doi, active_pct: m.active_pct,
+      }))
+    }
+    return []
+  }, [isQuarter, qData, momData])
   const [metric, setMetric] = useState<MetricKey>('fee')
   const [search, setSearch] = useState('')
   const [filterBranch, setFilterBranch] = useState('')
@@ -164,7 +185,7 @@ export default function SalesPage() {
 
   // Group by branch → team
   const grouped = useMemo(() => {
-    const map: Record<string, Record<string, Broker[]>> = {}
+    const map: Record<string, Record<string, UnifiedBroker[]>> = {}
     filtered.forEach(b => {
       if (!map[b.chi_nhanh]) map[b.chi_nhanh] = {}
       if (!map[b.chi_nhanh][b.team]) map[b.chi_nhanh][b.team] = []
@@ -177,6 +198,11 @@ export default function SalesPage() {
 
   return (
     <div className="page-container py-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+        <h1 className="text-2xl font-bold text-slate-800">Doanh số môi giới</h1>
+        <PeriodSelector availableMonths={availableMonths || []} value={period} onChange={setPeriod} />
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Metric switcher */}
@@ -264,6 +290,7 @@ export default function SalesPage() {
                     branchColor={color}
                     expanded={expandedTeams.has(key)}
                     onToggle={() => toggleTeam(key)}
+                    isQuarter={isQuarter}
                   />
                 )
               })}
