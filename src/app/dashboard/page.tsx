@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fmtVND, fmtPct, pctColor, BRANCH_COLORS, BRANCH_ORDER } from '@/lib/utils'
 import StatCard from '@/components/ui/StatCard'
@@ -102,6 +102,9 @@ function Skeleton({ className = '' }: { className?: string }) {
 export default function DashboardPage() {
   const { data: availableMonths, isLoading: loadingMonths } = useAvailableMonths()
   const [period, setPeriod] = useState<PeriodOption | null>(null)
+  const [drillDownMetric, setDrillDownMetric] = useState<'fee_nay' | 'mar_nay' | 'active_nay' | null>(null)
+  const [branchTab, setBranchTab] = useState<'fee' | 'margin' | 'active'>('fee')
+  const [podiumTab, setPodiumTab] = useState<'fee' | 'margin' | 'active'>('fee')
 
   const isQuarter = period?.type === 'quarter'
   const val = period?.value || ''
