@@ -50,6 +50,7 @@ export interface BrokerQuarterly {
   mar_3ben_sum: number
   mar_ungtruoc_sum: number
   active_sum: number
+  is_active_last_month: boolean
 }
 
 export interface PeriodOption {
@@ -78,4 +79,5 @@ export interface UnifiedBroker {
   active_truoc: number;
   active_tuyet_doi: number;
   active_pct: number | null;
+  is_active_last_month?: boolean;
 }

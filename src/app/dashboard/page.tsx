@@ -105,6 +105,7 @@ export default function DashboardPage() {
         mar_nay: Number(q.mar_tong_sum || 0), mar_truoc: 0, mar_tuyet_doi: 0, mar_pct: null,
         mar_margin: Number(q.mar_margin_sum || 0), mar_3ben: Number(q.mar_3ben_sum || 0), mar_ungtruoc: Number(q.mar_ungtruoc_sum || 0),
         active_nay: Number(q.active_sum || 0), active_truoc: 0, active_tuyet_doi: 0, active_pct: null,
+        is_active_last_month: q.is_active_last_month,
       }))
     } else if (!isQuarter && momData) {
       return momData.map(m => ({
@@ -137,6 +138,10 @@ export default function DashboardPage() {
       </div>
     </div>
   )
+
+  const activeBrokerCount = isQuarter
+    ? brokers.filter(b => b.is_active_last_month).length
+    : brokers.length
 
   const stats = calcStats(brokers)
   const branchData = calcBranchData(brokers)
@@ -187,7 +192,7 @@ export default function DashboardPage() {
         />
         <StatCard
           label="Môi giới"
-          value={brokers.length.toString()}
+          value={activeBrokerCount.toString()}
           sub={`${totalTeams} teams`}
           icon={Users}
           iconColor="text-pink-500"

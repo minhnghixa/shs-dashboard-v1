@@ -1,4 +1,4 @@
-CREATE TABLE broker_monthly (
+CREATE TABLE IF NOT EXISTS broker_monthly (
   -- Primary Key composite
   month_date      DATE        NOT NULL,
   -- Ngày đầu tháng. VD: 2026-01-01, 2026-02-01, 2026-03-01
@@ -42,10 +42,11 @@ CREATE TABLE broker_monthly (
 );
 
 -- Indexes
-CREATE INDEX idx_bm_month_date ON broker_monthly(month_date);
-CREATE INDEX idx_bm_ma_mg      ON broker_monthly(ma_mg);
-CREATE INDEX idx_bm_chi_nhanh  ON broker_monthly(chi_nhanh);
-CREATE INDEX idx_bm_team       ON broker_monthly(team);
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_bm_month_date ON broker_monthly(month_date);
+CREATE INDEX IF NOT EXISTS idx_bm_ma_mg      ON broker_monthly(ma_mg);
+CREATE INDEX IF NOT EXISTS idx_bm_chi_nhanh  ON broker_monthly(chi_nhanh);
+CREATE INDEX IF NOT EXISTS idx_bm_team       ON broker_monthly(team);
 
 -- Auto-update timestamp
 CREATE OR REPLACE FUNCTION set_updated_at()
@@ -53,6 +54,7 @@ RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_bm_updated_at ON broker_monthly;
 CREATE TRIGGER trg_bm_updated_at
   BEFORE UPDATE ON broker_monthly
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -104,6 +106,7 @@ LEFT JOIN broker_monthly prev
 
 -- View tổng hợp theo quý cho từng môi giới
 -- Dùng DATE_TRUNC('quarter') để group
+DROP VIEW IF EXISTS v_broker_quarterly CASCADE;
 CREATE OR REPLACE VIEW v_broker_quarterly AS
 SELECT
   DATE_TRUNC('quarter', month_date)::DATE       AS quarter_date,
@@ -121,14 +124,23 @@ SELECT
   COUNT(DISTINCT month_date)                    AS months_count,
   -- months_count dùng để biết quý đã có đủ 3 tháng chưa
 
-  -- Margin: SUM lũy kế cả quý (T1+T2+T3)
+  -- Margin: Yêu cầu tính SUM (Tháng 1 + Tháng 2 + Tháng 3)
   SUM(mar_tong)                                 AS mar_tong_sum,
   SUM(mar_margin)                               AS mar_margin_sum,
   SUM(mar_3ben)                                 AS mar_3ben_sum,
   SUM(mar_ungtruoc)                             AS mar_ungtruoc_sum,
 
-  -- Active: SUM lũy kế cả quý
-  SUM(active)                                   AS active_sum
+  -- Active: Yêu cầu lấy số active tháng 1 + tháng 2 + tháng 3 (SUM)
+  SUM(active)                                   AS active_sum,
+
+  -- Cho biết môi giới này có tham gia vào tháng cuối cùng của quý không (để đếm số lượng môi giới tại quý)
+  (
+    MAX(month_date) = (
+      SELECT MAX(month_date) 
+      FROM broker_monthly bm2 
+      WHERE DATE_TRUNC('quarter', bm2.month_date) = DATE_TRUNC('quarter', MAX(broker_monthly.month_date))
+    )
+  )                                             AS is_active_last_month
 
 FROM broker_monthly
 GROUP BY
@@ -165,5 +177,7 @@ GROUP BY month_date, chi_nhanh, team;
 
 -- RLS
 ALTER TABLE broker_monthly ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "public_read" ON broker_monthly;
+DROP POLICY IF EXISTS "auth_write" ON broker_monthly;
 CREATE POLICY "public_read"   ON broker_monthly FOR SELECT USING (true);
 CREATE POLICY "auth_write"    ON broker_monthly FOR ALL    USING (true) WITH CHECK (true);
