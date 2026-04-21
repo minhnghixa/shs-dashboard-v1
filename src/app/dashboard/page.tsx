@@ -7,30 +7,12 @@ import DrillDownModal from '@/components/ui/DrillDownModal'
 import PeriodSelector from '@/components/ui/PeriodSelector'
 import { DollarSign, TrendingUp, Users, BarChart2, Building2 } from 'lucide-react'
 import { useAvailableMonths, useBrokerMoM, useBrokerQuarterly } from '@/hooks/useBrokerData'
-import type { PeriodOption } from '@/lib/types'
+import type { PeriodOption, UnifiedBroker } from '@/lib/types'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, LineChart, Line, Legend,
   PieChart, Pie
 } from 'recharts'
-export interface UnifiedBroker {
-  ma_mg: string;
-  ho_ten: string;
-  team: string;
-  chi_nhanh: string;
-  fee_nay: number;
-  fee_truoc: number;
-  fee_tuyet_doi: number;
-  fee_pct: number | null;
-  mar_nay: number;
-  mar_truoc: number;
-  mar_tuyet_doi: number;
-  mar_pct: number | null;
-  active_nay: number;
-  active_truoc: number;
-  active_tuyet_doi: number;
-  active_pct: number | null;
-}
 
 function calcStats(brokers: UnifiedBroker[]) {
   const total_fee_nay = brokers.reduce((s, b) => s + b.fee_nay, 0)
