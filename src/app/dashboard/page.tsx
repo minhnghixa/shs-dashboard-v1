@@ -119,16 +119,18 @@ export default function DashboardPage() {
     if (isQuarter && qData) {
       return qData.map(q => ({
         ma_mg: q.ma_mg, ho_ten: q.ho_ten, team: q.team, chi_nhanh: q.chi_nhanh,
-        fee_nay: q.fee_qtd, fee_truoc: 0, fee_tuyet_doi: 0, fee_pct: null,
-        mar_nay: q.mar_tong_avg, mar_truoc: 0, mar_tuyet_doi: 0, mar_pct: null,
-        active_nay: q.active_max, active_truoc: 0, active_tuyet_doi: 0, active_pct: null,
+        fee_nay: Number(q.fee_qtd || 0), fee_truoc: 0, fee_tuyet_doi: 0, fee_pct: null,
+        mar_nay: Number(q.mar_tong_avg || 0), mar_truoc: 0, mar_tuyet_doi: 0, mar_pct: null,
+        mar_margin: Number(q.mar_margin_avg || 0), mar_3ben: Number(q.mar_3ben_avg || 0), mar_ungtruoc: Number(q.mar_ungtruoc_avg || 0),
+        active_nay: Number(q.active_max || 0), active_truoc: 0, active_tuyet_doi: 0, active_pct: null,
       }))
     } else if (!isQuarter && momData) {
       return momData.map(m => ({
         ma_mg: m.ma_mg, ho_ten: m.ho_ten, team: m.team, chi_nhanh: m.chi_nhanh,
-        fee_nay: m.fee_nay, fee_truoc: m.fee_truoc, fee_tuyet_doi: m.fee_tuyet_doi, fee_pct: m.fee_pct,
-        mar_nay: m.mar_nay, mar_truoc: m.mar_truoc, mar_tuyet_doi: m.mar_tuyet_doi, mar_pct: m.mar_pct,
-        active_nay: m.active_nay, active_truoc: m.active_truoc, active_tuyet_doi: m.active_tuyet_doi, active_pct: m.active_pct,
+        fee_nay: Number(m.fee_nay || 0), fee_truoc: Number(m.fee_truoc || 0), fee_tuyet_doi: Number(m.fee_tuyet_doi || 0), fee_pct: m.fee_pct ? Number(m.fee_pct) : null,
+        mar_nay: Number(m.mar_nay || 0), mar_truoc: Number(m.mar_truoc || 0), mar_tuyet_doi: Number(m.mar_tuyet_doi || 0), mar_pct: m.mar_pct ? Number(m.mar_pct) : null,
+        mar_margin: Number(m.mar_margin || 0), mar_3ben: Number(m.mar_3ben || 0), mar_ungtruoc: Number(m.mar_ungtruoc || 0),
+        active_nay: Number(m.active_nay || 0), active_truoc: Number(m.active_truoc || 0), active_tuyet_doi: Number(m.active_tuyet_doi || 0), active_pct: m.active_pct ? Number(m.active_pct) : null,
       }))
     }
     return []
@@ -184,7 +186,7 @@ export default function DashboardPage() {
           delay={0}
         />
         <StatCard
-          label="Dư nợ Margin"
+          label={isQuarter ? "Dư nợ margin quý này" : "Dư nợ margin tháng này"}
           value={fmtVND(stats.total_mar_nay)}
           pct={stats.mar_pct}
           sub="tổng dư nợ"

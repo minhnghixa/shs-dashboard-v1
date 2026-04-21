@@ -27,6 +27,7 @@ export function useBrokerMoM(monthDate: string) {
         .from('v_broker_mom')
         .select('*')
         .eq('month_date', monthDate)
+        .limit(5000)
       if (error) throw error
       return data as BrokerMoM[]
     },
@@ -44,6 +45,7 @@ export function useBrokerQuarterly(quarterDate: string) {
         .from('v_broker_quarterly')
         .select('*')
         .eq('quarter_date', quarterDate)
+        .limit(5000)
       if (error) throw error
       return data as BrokerQuarterly[]
     },

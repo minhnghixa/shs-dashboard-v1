@@ -9,53 +9,38 @@ interface PeriodSelectorProps {
 }
 
 export default function PeriodSelector({ availableMonths, value, onChange }: PeriodSelectorProps) {
-  const [type, setType] = useState<'month' | 'quarter'>('month')
-
-  // Change type if controlled value changes externally
-  useEffect(() => {
-    if (value && value.type !== type && (value.type === 'month' || value.type === 'quarter')) {
-      setType(value.type as 'month' | 'quarter')
-    }
-  }, [value?.type, type])
-
-  const options = useMemo(() => {
+  const monthOptions = useMemo(() => {
     if (!availableMonths || availableMonths.length === 0) return []
+    return availableMonths.map(m => {
+      const d = new Date(m)
+      return { label: `Tháng ${d.getMonth() + 1}/${d.getFullYear()}`, type: 'month' as const, value: m }
+    })
+  }, [availableMonths])
 
-    if (type === 'month') {
-      return availableMonths.map(m => {
-        const d = new Date(m)
-        return {
-          label: `Tháng ${d.getMonth() + 1}/${d.getFullYear()}`,
-          type: 'month' as const,
-          value: m
-        }
-      })
-    }
+  const quarterOptions = useMemo(() => {
+    if (!availableMonths || availableMonths.length === 0) return []
+    const qMap: Record<string, number> = {}
+    availableMonths.forEach(m => {
+      const d = new Date(m)
+      const q = Math.ceil((d.getMonth() + 1) / 3)
+      const yr = d.getFullYear()
+      const key = `${yr}-${String((q - 1) * 3 + 1).padStart(2, '0')}-01`
+      qMap[key] = (qMap[key] || 0) + 1
+    })
+    const sortedKeys = Object.keys(qMap).sort((a,b) => b.localeCompare(a))
+    return sortedKeys.map(k => {
+      const d = new Date(k)
+      const q = Math.ceil((d.getMonth() + 1) / 3)
+      const yr = d.getFullYear()
+      const count = qMap[k]
+      return { label: `Q${q}/${yr} (${count === 3 ? '3 tháng' : `${count}/3 tháng`})`, type: 'quarter' as const, value: k }
+    })
+  }, [availableMonths])
 
-    if (type === 'quarter') {
-      const qMap: Record<string, number> = {}
-      availableMonths.forEach(m => {
-        const d = new Date(m)
-        const q = Math.ceil((d.getMonth() + 1) / 3)
-        const yr = d.getFullYear()
-        const key = `${yr}-${String((q - 1) * 3 + 1).padStart(2, '0')}-01`
-        qMap[key] = (qMap[key] || 0) + 1
-      })
-      const sortedKeys = Object.keys(qMap).sort((a,b) => b.localeCompare(a))
-      return sortedKeys.map(k => {
-        const d = new Date(k)
-        const q = Math.ceil((d.getMonth() + 1) / 3)
-        const yr = d.getFullYear()
-        const count = qMap[k]
-        const label = `Q${q}/${yr} (${count === 3 ? '3 tháng' : `${count}/3 tháng`})`
-        return { label, type: 'quarter' as const, value: k }
-      })
-    }
+  const currentType = value?.type || 'month'
+  const options = currentType === 'month' ? monthOptions : quarterOptions
 
-    return []
-  }, [availableMonths, type])
-
-  // Auto-select first option when type changes and current value is no longer valid
+  // Auto-select first option when options array changes and current value is no longer valid
   useEffect(() => {
     if (options.length > 0) {
       const isCurrentValueValid = options.some(o => o.value === value?.value && o.type === value?.type)
@@ -63,26 +48,26 @@ export default function PeriodSelector({ availableMonths, value, onChange }: Per
         onChange(options[0])
       }
     }
-  }, [type, options]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentType, options, value?.value, value?.type, onChange])
 
   return (
     <div className="flex flex-wrap items-center gap-3 bg-white border border-slate-200 p-1.5 rounded-xl shadow-sm w-fit">
       {/* Segmented Control */}
       <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
         <button
-          onClick={() => setType('month')}
+          onClick={() => { if (monthOptions.length > 0) onChange(monthOptions[0]) }}
           className={cn(
             'px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
-            type === 'month' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            currentType === 'month' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           )}
         >
           Tháng
         </button>
         <button
-          onClick={() => setType('quarter')}
+          onClick={() => { if (quarterOptions.length > 0) onChange(quarterOptions[0]) }}
           className={cn(
             'px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150',
-            type === 'quarter' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            currentType === 'quarter' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           )}
         >
           Quý

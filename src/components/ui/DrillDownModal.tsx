@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, ChevronDown, ChevronRight } from 'lucide-react'
 import { fmtVND, BRANCH_ORDER } from '@/lib/utils'
-import type { Broker } from '@/lib/types'
+import type { UnifiedBroker } from '@/lib/types'
 
 type Metric = 'fee_nay' | 'mar_nay' | 'active_nay'
 
@@ -9,7 +9,7 @@ interface Props {
   isOpen: boolean
   onClose: () => void
   metric: Metric | null
-  brokers: Broker[]
+  brokers: UnifiedBroker[]
 }
 
 const METRIC_LABELS = {
@@ -43,7 +43,7 @@ export default function DrillDownModal({ isOpen, onClose, metric, brokers }: Pro
   let companyTotal = 0
   brokers.forEach(b => {
     if (metric === 'fee_nay') companyTotal += b.fee_nay
-    if (metric === 'mar_nay') companyTotal += b.mar_tong_nay
+    if (metric === 'mar_nay') companyTotal += b.mar_nay
     if (metric === 'active_nay') companyTotal += b.active_nay
   })
 
@@ -51,7 +51,7 @@ export default function DrillDownModal({ isOpen, onClose, metric, brokers }: Pro
   const branchBrokers = brokers.filter(b => b.chi_nhanh === activeTab)
   
   // Group by team
-  const teamsMap: Record<string, { total: number, marMarginTotal: number, mar3BenTotal: number, marUngTruocTotal: number, members: Broker[] }> = {}
+  const teamsMap: Record<string, { total: number, marMarginTotal: number, mar3BenTotal: number, marUngTruocTotal: number, members: UnifiedBroker[] }> = {}
   let totalBranch = 0
   let totalMarMargin = 0
   let totalMar3Ben = 0
@@ -65,14 +65,14 @@ export default function DrillDownModal({ isOpen, onClose, metric, brokers }: Pro
 
     if (metric === 'fee_nay') val = b.fee_nay
     if (metric === 'mar_nay') {
-      val = b.mar_tong_nay 
-      totalMarMargin += b.mar_margin_nay || 0
-      totalMar3Ben += b.mar_3ben_nay || 0
-      totalMarUngTruoc += b.mar_ungtruoc_nay || 0
+      val = b.mar_nay 
+      totalMarMargin += b.mar_margin || 0
+      totalMar3Ben += b.mar_3ben || 0
+      totalMarUngTruoc += b.mar_ungtruoc || 0
 
-      teamsMap[t].marMarginTotal += b.mar_margin_nay || 0
-      teamsMap[t].mar3BenTotal += b.mar_3ben_nay || 0
-      teamsMap[t].marUngTruocTotal += b.mar_ungtruoc_nay || 0
+      teamsMap[t].marMarginTotal += b.mar_margin || 0
+      teamsMap[t].mar3BenTotal += b.mar_3ben || 0
+      teamsMap[t].marUngTruocTotal += b.mar_ungtruoc || 0
     }
     if (metric === 'active_nay') val = b.active_nay
 
@@ -244,12 +244,12 @@ export default function DrillDownModal({ isOpen, onClose, metric, brokers }: Pro
                         <tbody className="divide-y divide-slate-100/60">
                           {team.members
                             .sort((a, b) => {
-                              const valA = metric === 'fee_nay' ? a.fee_nay : metric === 'mar_nay' ? a.mar_tong_nay : a.active_nay
-                              const valB = metric === 'fee_nay' ? b.fee_nay : metric === 'mar_nay' ? b.mar_tong_nay : b.active_nay
+                              const valA = metric === 'fee_nay' ? a.fee_nay : metric === 'mar_nay' ? a.mar_nay : a.active_nay
+                              const valB = metric === 'fee_nay' ? b.fee_nay : metric === 'mar_nay' ? b.mar_nay : b.active_nay
                               return valB - valA
                             })
                             .map((b, i) => {
-                               const val = metric === 'fee_nay' ? b.fee_nay : metric === 'mar_nay' ? b.mar_tong_nay : b.active_nay
+                               const val = metric === 'fee_nay' ? b.fee_nay : metric === 'mar_nay' ? b.mar_nay : b.active_nay
                                return (
                                 <tr key={b.ma_mg} className="hover:bg-white transition-colors whitespace-nowrap">
                                   <td className="py-2.5 px-4 text-slate-400">{i + 1}</td>
@@ -257,9 +257,9 @@ export default function DrillDownModal({ isOpen, onClose, metric, brokers }: Pro
                                   <td className="py-2.5 px-4 text-slate-500">{b.ma_mg}</td>
                                   {metric === 'mar_nay' ? (
                                     <>
-                                      <td className="py-2.5 px-4 text-slate-600 text-right">{formatValue(b.mar_margin_nay || 0)}</td>
-                                      <td className="py-2.5 px-4 text-slate-600 text-right">{formatValue(b.mar_3ben_nay || 0)}</td>
-                                      <td className="py-2.5 px-4 text-slate-600 text-right">{formatValue(b.mar_ungtruoc_nay || 0)}</td>
+                                      <td className="py-2.5 px-4 text-slate-600 text-right">{formatValue(b.mar_margin || 0)}</td>
+                                      <td className="py-2.5 px-4 text-slate-600 text-right">{formatValue(b.mar_3ben || 0)}</td>
+                                      <td className="py-2.5 px-4 text-slate-600 text-right">{formatValue(b.mar_ungtruoc || 0)}</td>
                                       <td className="py-2.5 px-4 text-slate-800 font-bold text-right">{formatValue(val)}</td>
                                     </>
                                   ) : (

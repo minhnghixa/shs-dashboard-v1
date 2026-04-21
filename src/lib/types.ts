@@ -46,6 +46,9 @@ export interface BrokerQuarterly {
   fee_qtd: number
   months_count: number
   mar_tong_avg: number
+  mar_margin_avg: number
+  mar_3ben_avg: number
+  mar_ungtruoc_avg: number
   active_max: number
   active_avg: number
 }
@@ -69,6 +72,9 @@ export interface UnifiedBroker {
   mar_truoc: number;
   mar_tuyet_doi: number;
   mar_pct: number | null;
+  mar_margin: number;
+  mar_3ben: number;
+  mar_ungtruoc: number;
   active_nay: number;
   active_truoc: number;
   active_tuyet_doi: number;
