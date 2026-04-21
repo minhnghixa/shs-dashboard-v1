@@ -228,8 +228,8 @@ export default function DashboardPage() {
       {/* Row 2: Donut Chart & Top Performers */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Unified Donut Chart */}
-        <div 
-          className="bg-white rounded-xl border border-slate-100 p-4 lg:col-span-2 shadow-sm flex flex-col animate-fade-up opacity-0 cursor-pointer hover:border-brand-500 hover:shadow-md transition-all group/card" 
+        <div
+          className="bg-white rounded-xl border border-slate-100 p-4 lg:col-span-2 shadow-sm flex flex-col animate-fade-up opacity-0 cursor-pointer hover:border-brand-500 hover:shadow-md transition-all group/card"
           style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
           onClick={() => setDrillDownMetric(donutConfig.dataKey as any)}
         >
@@ -254,7 +254,7 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
-          
+
           <div className="flex-1 flex flex-col md:flex-row items-center gap-6">
             <div className="w-full md:w-1/2 relative h-[220px] group/pie">
               <ResponsiveContainer width="100%" height="100%">
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                       <Cell key={`cell-${i}`} fill={d.color || '#3b82f6'} className="hover:opacity-80 transition-opacity" />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     content={({ active, payload }) => {
                       if (!active || !payload?.length) return null
                       const p = payload[0]
@@ -301,7 +301,7 @@ export default function DashboardPage() {
                 <span className="text-lg font-bold text-slate-800">{donutConfig.fmt(donutConfig.total)}</span>
               </div>
             </div>
-            
+
             {/* Custom Legend */}
             <div className="w-full md:w-1/2 flex flex-col gap-2 px-2">
               {donutChartData.map((d) => {
@@ -325,8 +325,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Top Performer */}
-        <div className="rounded-2xl border-0 p-4 lg:p-5 pb-6 flex flex-col items-center relative overflow-hidden lg:col-span-1 shadow-sm animate-fade-up opacity-0" style={{ 
-          animationDelay: '300ms', 
+        <div className="rounded-2xl border-0 p-4 lg:p-5 pb-6 flex flex-col items-center relative overflow-hidden lg:col-span-1 shadow-sm animate-fade-up opacity-0" style={{
+          animationDelay: '300ms',
           animationFillMode: 'forwards',
           background: 'linear-gradient(110deg, #efd6a1 0%, #fdfcf4 25%, #dcb87d 60%, #ba9661 100%)'
         }}>
@@ -335,7 +335,7 @@ export default function DashboardPage() {
 
           <div className="mb-4 text-center relative z-10 w-full flex flex-col items-center gap-3">
             <div className="flex w-full justify-between items-start gap-2">
-              <h3 className="text-lg font-bold text-amber-950 tracking-tight text-left leading-tight">Tư vấn đầu tư xuất sắc nhất</h3>
+              <h3 className="text-lg font-bold text-amber-950 tracking-tight text-left leading-tight">Tư vấn đầu tư<br />Xuất sắc nhất</h3>
               <div className="flex items-center gap-1 bg-amber-100/50 p-0.5 rounded-lg border border-amber-200/50 shrink-0">
                 {[
                   { id: 'fee', label: 'Phí GD' },
@@ -361,32 +361,32 @@ export default function DashboardPage() {
               { idx: 0, rank: 1, badge: 'text-amber-900 bg-gradient-to-br from-amber-300 to-amber-400 border-amber-200 shadow-amber-500/20', ring: 'border-amber-300', size: 'w-24 h-24 md:w-28 md:h-28 lg:w-24 lg:h-24 xl:w-28 xl:h-28', tz: 'text-3xl md:text-4xl lg:text-3xl xl:text-4xl', pb: 'pb-6 md:pb-8 lg:pb-6 xl:pb-8 z-10' },
               { idx: 2, rank: 3, badge: 'text-orange-950 bg-gradient-to-br from-orange-200 to-orange-300 border-orange-300 shadow-orange-500/10', ring: 'border-orange-300', size: 'w-14 h-14 md:w-16 md:h-16 lg:w-14 lg:h-14 xl:w-16 xl:h-16', tz: 'text-base md:text-lg lg:text-base xl:text-lg', pb: 'pb-0' },
             ].map(cfg => {
-               const b = topBrokers[cfg.idx]
-               if (!b) return null
-               const color = BRANCH_COLORS[b.chi_nhanh] ?? '#6366f1'
-               return (
-                 <div key={b.ma_mg} className={`flex flex-col items-center flex-1 min-w-[70px] md:min-w-[85px] ${cfg.pb}`}>
-                   <div className={`relative ${cfg.size} rounded-full border-[3px] md:border-[4px] ${cfg.ring} flex items-center justify-center text-white ${cfg.tz} font-bold shadow-xl transition-transform hover:scale-105`} style={{ background: color }}>
-                     {b.ho_ten.split(' ').filter((_, idx, arr) => idx === 0 || idx === arr.length - 1).map(n => n[0]).join('').toUpperCase()}
-                     <div className={`absolute -top-3 w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center font-black text-[10px] md:text-xs border shadow-sm ${cfg.badge}`}>
-                       {cfg.rank}
-                     </div>
-                   </div>
-                   
-                   <div className="mt-3 flex flex-col items-center gap-1 text-center w-full">
-                     <span className="font-bold text-slate-800 text-[11px] md:text-sm leading-tight line-clamp-2 min-h-[2.4em]">{b.ho_ten}</span>
-                     <span 
-                       className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border border-black/5 truncate max-w-full"
-                       style={{ backgroundColor: `${color}1A`, color: color }}
-                     >
-                       {b.team && b.team !== 'Không xác định' && b.team !== '' ? b.team.replace('Team ', '') : b.chi_nhanh.replace('Chi nhánh ', '').replace('Phòng Giao dịch ', 'PGD ')}
-                     </span>
-                     <span className="font-black text-[#5c3a0a] text-xs md:text-base mt-0.5 tracking-tight drop-shadow-sm">
-                       {podiumTab === 'fee' ? fmtVND(b.fee_nay) : podiumTab === 'margin' ? fmtVND(b.mar_nay) : b.active_nay.toLocaleString('vi-VN')}
-                     </span>
-                   </div>
-                 </div>
-               )
+              const b = topBrokers[cfg.idx]
+              if (!b) return null
+              const color = BRANCH_COLORS[b.chi_nhanh] ?? '#6366f1'
+              return (
+                <div key={b.ma_mg} className={`flex flex-col items-center flex-1 min-w-[70px] md:min-w-[85px] ${cfg.pb}`}>
+                  <div className={`relative ${cfg.size} rounded-full border-[3px] md:border-[4px] ${cfg.ring} flex items-center justify-center text-white ${cfg.tz} font-bold shadow-xl transition-transform hover:scale-105`} style={{ background: color }}>
+                    {b.ho_ten.split(' ').filter((_, idx, arr) => idx === 0 || idx === arr.length - 1).map(n => n[0]).join('').toUpperCase()}
+                    <div className={`absolute -top-3 w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center font-black text-[10px] md:text-xs border shadow-sm ${cfg.badge}`}>
+                      {cfg.rank}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-col items-center gap-1 text-center w-full">
+                    <span className="font-bold text-slate-800 text-[11px] md:text-sm leading-tight line-clamp-2 min-h-[2.4em]">{b.ho_ten}</span>
+                    <span
+                      className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border border-black/5 truncate max-w-full"
+                      style={{ backgroundColor: `${color}1A`, color: color }}
+                    >
+                      {b.team && b.team !== 'Không xác định' && b.team !== '' ? b.team.replace('Team ', '') : b.chi_nhanh.replace('Chi nhánh ', '').replace('Phòng Giao dịch ', 'PGD ')}
+                    </span>
+                    <span className="font-black text-[#5c3a0a] text-xs md:text-base mt-0.5 tracking-tight drop-shadow-sm">
+                      {podiumTab === 'fee' ? fmtVND(b.fee_nay) : podiumTab === 'margin' ? fmtVND(b.mar_nay) : b.active_nay.toLocaleString('vi-VN')}
+                    </span>
+                  </div>
+                </div>
+              )
             })}
           </div>
         </div>
@@ -506,7 +506,7 @@ export default function DashboardPage() {
                       </div>
                     </td>
                     <td className="py-3 px-3 text-slate-600 font-medium">{d.count}</td>
-                    
+
                     {analysisMetric === 'fee' && (
                       <>
                         {!isQuarter && <td className="py-3 px-3 text-slate-500 whitespace-nowrap">{fmtVND(d.fee_truoc)}</td>}
