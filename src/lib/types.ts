@@ -45,10 +45,10 @@ export interface BrokerQuarterly {
   chi_nhanh: string
   fee_qtd: number
   months_count: number
-  mar_tong_sum: number
-  mar_margin_sum: number
-  mar_3ben_sum: number
-  mar_ungtruoc_sum: number
+  mar_tong_avg: number
+  mar_margin_avg: number
+  mar_3ben_avg: number
+  mar_ungtruoc_avg: number
   active_sum: number
   is_active_last_month: boolean
 }

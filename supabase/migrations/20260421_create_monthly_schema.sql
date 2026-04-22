@@ -124,11 +124,11 @@ SELECT
   COUNT(DISTINCT month_date)                    AS months_count,
   -- months_count dùng để biết quý đã có đủ 3 tháng chưa
 
-  -- Margin: Yêu cầu tính SUM (Tháng 1 + Tháng 2 + Tháng 3)
-  SUM(mar_tong)                                 AS mar_tong_sum,
-  SUM(mar_margin)                               AS mar_margin_sum,
-  SUM(mar_3ben)                                 AS mar_3ben_sum,
-  SUM(mar_ungtruoc)                             AS mar_ungtruoc_sum,
+  -- Margin: Bình quân 3 tháng trong quý (AVG)
+  AVG(mar_tong)::BIGINT                         AS mar_tong_avg,
+  AVG(mar_margin)::BIGINT                       AS mar_margin_avg,
+  AVG(mar_3ben)::BIGINT                         AS mar_3ben_avg,
+  AVG(mar_ungtruoc)::BIGINT                     AS mar_ungtruoc_avg,
 
   -- Active: Yêu cầu lấy số active tháng 1 + tháng 2 + tháng 3 (SUM)
   SUM(active)                                   AS active_sum,
